@@ -22,6 +22,7 @@ class ServerChan3Msg(_PluginBase):
     author_url = "https://github.com/lulu1072502/MoviePilot-Plugins"
     plugin_config_prefix = "serverchan3msg_"
     plugin_order = 31
+    plugin_label = "消息通知"
     auth_level = 1
 
     # 私有属性
@@ -105,6 +106,7 @@ class ServerChan3Msg(_PluginBase):
         """
         return self._enabled and bool(self._sendkey)
 
+    @staticmethod
     @staticmethod
     def get_command() -> List[Dict[str, Any]]:
         """
@@ -326,7 +328,7 @@ class ServerChan3Msg(_PluginBase):
         """
         返回侧栏导航项。
         """
-        if not self._show_sidebar:
+        if not self.get_state() or not self._show_sidebar:
             return []
         return [
             {
@@ -664,7 +666,11 @@ class ServerChan3Msg(_PluginBase):
         """
         停止插件后台服务并释放资源。
         """
-        pass
+        from app.scheduler import Scheduler
+        try:
+            Scheduler().remove_plugin_job(self.__class__.__name__.lower())
+        except Exception as e:
+            logger.debug(f"Server酱³ 停止服务: {e}")
 
     def get_service(self) -> List[Dict[str, Any]]:
         """
