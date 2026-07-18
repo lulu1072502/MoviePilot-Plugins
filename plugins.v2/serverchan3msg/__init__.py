@@ -16,9 +16,9 @@ class ServerChan3Msg(_PluginBase):
 
     plugin_name = "Server酱³ 消息通知"
     plugin_desc = "支持使用 Server酱³（方糖气球）发送推送通知到手机。"
-    plugin_icon = "favicon.ico"
+    plugin_icon = "favicon.png"
     plugin_version = "2.1.0"
-    plugin_author = "Ken丶"
+    plugin_author = "Ken"
     author_url = "https://github.com/lulu1072502/MoviePilot-Plugins"
     plugin_config_prefix = "serverchan3msg_"
     plugin_order = 31
