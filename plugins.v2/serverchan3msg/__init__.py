@@ -18,7 +18,7 @@ class ServerChan3Msg(_PluginBase):
     plugin_desc = "支持使用 Server酱³（方糖气球）发送推送通知到手机。"
     plugin_icon = "https://ft07.com/favicon.ico"
     plugin_version = "2.1.0"
-    plugin_author = "local"
+    plugin_author = "Ken丶"
     author_url = "https://github.com/lulu1072502/MoviePilot-Plugins"
     plugin_config_prefix = "serverchan3msg_"
     plugin_order = 31
