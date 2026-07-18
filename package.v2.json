@@ -4,8 +4,8 @@
     "description": "支持使用 Server酱³（方糖气球）发送推送通知到手机。",
     "labels": "消息通知",
     "version": "2.1.0",
-    "icon": "https://ft07.com/favicon.ico",
-    "author": "local",
+    "icon": "favicon.png",
+    "author": "Ken",
     "level": 1,
     "system_version": ">=2.12.0",
     "history": {
