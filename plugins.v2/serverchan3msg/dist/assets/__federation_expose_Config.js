@@ -305,6 +305,18 @@ const _sfc_main = /* @__PURE__ */ _defineComponent({
         })
       ]));
 
+      // Divider
+      cardChildren.push(_createElementVNode("div", { class: "sc3-divider" }));
+
+      // Field: 消息类型
+      cardChildren.push(_createElementVNode("div", { class: "sc3-field" }, [
+        _createElementVNode("label", { class: "sc3-field__label mb-1" }, [
+          _createVNode(_component_v_icon, { icon: "mdi-message-text-outline", size: "18", color: "success", class: "mr-1" }),
+          _createTextVNode(" 消息类型")
+        ]),
+        _createElementVNode("div", { class: "d-flex flex-wrap gap-1 mt-1" }, buildCheckboxes(config, msgTypeOptions))
+      ]));
+
       children.push(_createElementVNode("div", { class: "sc3-card" }, cardChildren));
 
       // Snackbar
