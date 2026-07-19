@@ -17,7 +17,7 @@ class ServerChan3Msg(_PluginBase):
     plugin_name = "Server酱³ 消息通知"
     plugin_desc = "支持使用 Server酱³（方糖气球）发送推送通知到手机。"
     plugin_icon = "favicon.png"
-    plugin_version = "2.1.0"
+    plugin_version = "2.2.0"
     plugin_author = "Ken"
     author_url = "https://github.com/lulu1072502/MoviePilot-Plugins"
     plugin_config_prefix = "serverchan3msg_"
@@ -36,6 +36,7 @@ class ServerChan3Msg(_PluginBase):
     _max_history = 50
     _history_limit = 50
     _show_sidebar = True
+    _channel = "serverchan"
     _last_message_id = 0
 
     def init_plugin(self, config: dict = None) -> None:
@@ -51,6 +52,7 @@ class ServerChan3Msg(_PluginBase):
             self._msgtypes = config.get("msgtypes") or []
             self._history_limit = int(config.get("history_limit", 50))
             self._show_sidebar = bool(config.get("show_sidebar", True))
+            self._channel = str(config.get("channel", "serverchan") or "serverchan")
 
         # 加载历史记录
         self._history = self.get_data("history") or []
