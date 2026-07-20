@@ -17,7 +17,7 @@ class ServerChan3Msg(_PluginBase):
     plugin_name = "Server酱³ 消息通知"
     plugin_desc = "支持使用 Server酱³（方糖气球）发送推送通知到手机。"
     plugin_icon = "favicon.png"
-    plugin_version = "2.2.0"
+    plugin_version = "2.2.1"
     plugin_author = "Ken"
     author_url = "https://github.com/lulu1072502/MoviePilot-Plugins"
     plugin_config_prefix = "serverchan3msg_"
@@ -595,9 +595,12 @@ class ServerChan3Msg(_PluginBase):
         logger.info(f"Server酱³ 请求 API: https://{uid}.push.ft07.com/send/***.send")
 
         # 构建正文内容
+        # 构建正文内容，将换行符转为 Markdown 换行
         content = text or ""
+        if content:
+            content = content.replace("\r\n", "\n").replace("\n", "\n\n")
         if image:
-            content += f"\n![image]({image})"
+            content += f"\n\n![image]({image})"
 
         data = {
             "title": title,
