@@ -4,7 +4,7 @@
     "description": "支持使用 Server酱³（方糖气球）发送推送通知到手机。",
     "labels": "消息通知",
     "version": "2.2.1",
-    "icon": "favicon.png",
+    "icon": "https://raw.githubusercontent.com/lulu1072502/MoviePilot-Plugins/refs/heads/main/icons/favicon.png",
     "author": "Ken",
     "level": 1,
     "system_version": ">=2.12.0",
