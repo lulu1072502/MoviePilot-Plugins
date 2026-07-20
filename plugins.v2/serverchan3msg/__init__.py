@@ -19,7 +19,7 @@ class ServerChan3Msg(_PluginBase):
     plugin_icon = "https://raw.githubusercontent.com/lulu1072502/MoviePilot-Plugins/refs/heads/main/icons/favicon.png"
     plugin_version = "2.2.1"
     plugin_author = "Ken"
-    author_url = "https://github.com/lulu1072502/MoviePilot-Plugins"
+    author_url = "https://github.com/lulu1072502"
     plugin_config_prefix = "serverchan3msg_"
     plugin_order = 31
     plugin_label = "消息通知"
