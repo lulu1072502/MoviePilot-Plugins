@@ -12,5 +12,19 @@
     "history": {
       "v1.0.0": "首个版本：包装内置 TMDB 搜索客户端 Search，调用方未指定 adult 时补上 adult=true，覆盖 search_multiis / search_movies / search_tvs / search_persons 及其异步入口，可在配置页随时开关。"
     }
+  },
+  "R18Marker": {
+    "name": "R18标志",
+    "description": "把整理历史、下载历史、订阅里的识别结果集中到一个插件页面，为成人内容条目显示 R18 标志：媒体身份为 TMDB 时读取该 ID 的 adult 字段并带 TTL 缓存，其它来源显示「未判定」，不伪造标记；同时提供 /results 与 /refresh 插件接口。",
+    "labels": "识别,元数据",
+    "version": "1.0.0",
+    "icon": "Moviepilot_A.png",
+    "author": "Ken",
+    "level": 1,
+    "release": true,
+    "system_version": ">=3.0.0",
+    "history": {
+      "v1.0.0": "首个版本：基于 app.sdk.queries 读取整理历史/下载历史/订阅的识别结果，按媒体身份解析成人标记（TMDB adult 字段，7 天 TTL 缓存），在插件页面用红/黄/绿徽标区分 R18、未判定与非 R18，并提供清空缓存重新判定的按钮与插件 API。"
+    }
   }
 }
