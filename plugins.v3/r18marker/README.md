@@ -32,7 +32,7 @@
 
 ### 3. 识别词一键写入
 
-内置 **76 条**经 TMDB 逐条核对生成的识别词（73 条 `{[tmdbid=…;type=tv;s=…;e=…]}` 绑定规则 + 3 条通用清理规则），快照随插件版本发布。
+内置 **205 条全量识别规则**（192 条 TMDB 绑定规则：191 条 `type=tv` + 1 条 `type=movie`；13 条通用清理规则），快照随插件版本发布。
 
 | 接口 | 作用 |
 | --- | --- |
@@ -72,14 +72,16 @@
 
 ## 内置识别词快照的维护
 
-内置快照由工作区脚本生成，规则变化后重跑即可（脚本幂等）：
+全量规则的单一来源是 `识别规则/通用规则.txt`（通用部分）+ `识别规则-OVA-TMDB绑定.txt`（绑定部分），组装与注入脚本幂等：
 
 ```
-识别规则/fetch_tmdb.ps1 / update_rules.ps1   # 生成或增量更新 识别规则-OVA-TMDB绑定.txt
-识别规则/inject_rules_into_plugin.ps1        # 把规则注入 plugins.v3/r18marker/__init__.py
+识别规则/update_rules.ps1               # 新批次增量：解析 → 追写绑定规则
+识别规则/build_full.ps1                 # 组装 识别规则-全量.txt（绑定 + 通用），并做四项自检
+识别规则/inject_rules_into_plugin.ps1   # 把全量规则注入 plugins.v3/r18marker/__init__.py
 ```
 
-注入脚本会做逐条一致性自检（把注入的 Python 字面量还原后与规则文件比对，`mismatch=0` 才算通过），并同步更新插件 `plugin_version` 对应的快照日期注释。
+`build_full.ps1` 的四个自检：① 每条绑定规则在全部文件名里只命中一个；② 绑定规则确实排在通用规则之前；③ 通用规则的正则全部可编译；④ 用一组「未绑定样例」模拟 MoviePilot 的处理效果。
+`inject_rules_into_plugin.ps1` 会把注入的 Python 字面量还原后与源文件逐条比对（`mismatch=0` 才算通过）。
 
 ## 本地安装
 

@@ -255,21 +255,23 @@ def main() -> None:
     items = {item["media_id"]: item for item in result["items"]}
     assert items["12345"]["r18_source"] == "adult", items["12345"]
 
-    # 7. 识别词：status / preview / apply
+    # 7. 识别词：status / preview / apply（用插件内置快照实际条数做断言，快照扩充后无需改测试）
+    builtin_count = len(plugin_module._BUILTIN_IDENTIFIERS)
+    assert builtin_count >= 76, builtin_count
     status = plugin.api_identifiers_status()
     assert status["available"] is True, status
-    assert status["builtin_count"] == 76 and status["host_count"] == 0, status
-    assert status["missing"] == 76 and status["present"] == 0, status
+    assert status["builtin_count"] == builtin_count and status["host_count"] == 0, status
+    assert status["missing"] == builtin_count and status["present"] == 0, status
 
     preview = plugin.api_identifiers_preview()
-    assert preview["success"] is True and preview["total"] == 76 and preview["added"] == 76, preview
+    assert preview["success"] is True and preview["total"] == builtin_count and preview["added"] == builtin_count, preview
     # 预览不写入
     assert "CustomIdentifiers" not in FAKE_CONFIG_VALUES, FAKE_CONFIG_VALUES
 
     first = plugin.api_identifiers_apply()
-    assert first["success"] is True and first["added"] == 76 and first["total"] == 76, first
+    assert first["success"] is True and first["added"] == builtin_count and first["total"] == builtin_count, first
     stored = FAKE_CONFIG_VALUES["CustomIdentifiers"]
-    assert isinstance(stored, list) and len(stored) == 76, stored
+    assert isinstance(stored, list) and len(stored) == builtin_count, len(stored)
 
     # 幂等：再写一次不再新增
     second = plugin.api_identifiers_apply()
@@ -278,16 +280,16 @@ def main() -> None:
     # 保留用户已有规则，只追加缺失项
     FAKE_CONFIG_VALUES["CustomIdentifiers"] = ["我的规则 => 替换", stored[0]]
     third = plugin.api_identifiers_apply()
-    assert third["added"] == 75, third
+    assert third["added"] == builtin_count - 1, third
     merged = FAKE_CONFIG_VALUES["CustomIdentifiers"]
-    assert merged[0] == "我的规则 => 替换" and len(merged) == 77, merged[:3]
+    assert merged[0] == "我的规则 => 替换" and len(merged) == builtin_count + 1, merged[:3]
 
     # extra_identifiers 追加在内置规则之后
     plugin.init_plugin({"enabled": True, "extra_identifiers": "自定义追加规则 => 值"})
-    assert plugin.api_identifiers_status()["builtin_count"] == 77
+    assert plugin.api_identifiers_status()["builtin_count"] == builtin_count + 1
     FAKE_CONFIG_VALUES["CustomIdentifiers"] = []
     applied = plugin.api_identifiers_apply()
-    assert applied["added"] == 77, applied
+    assert applied["added"] == builtin_count + 1, applied
     assert FAKE_CONFIG_VALUES["CustomIdentifiers"][-1] == "自定义追加规则 => 值"
 
     # 8. 未启用时给出提示
