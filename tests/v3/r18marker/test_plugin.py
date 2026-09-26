@@ -1,12 +1,13 @@
-"""R18Marker 插件自检：不依赖真实 MoviePilot 宿主，用桩模块验证页面与判定逻辑。
+"""R18Marker 插件自检：用桩模块验证页面、关键词判定与识别词写入逻辑。
 
 覆盖：
-1. 页面顶部统计正确（总数 / R18 / 未判定）；
+1. 页面统计正确（总数 / R18 / 未判定）；
 2. 三种徽标：R18（红）、R18 未判定（黄）、非 R18（绿）；
 3. 非 TMDB 来源不做判定（未判定）且不调用 TMDB；
-4. TMDB 判定结果带缓存，重复渲染不重复查询；
-5. 刷新接口清空缓存后可重新判定；
-6. 插件未启用时页面给出提示。
+4. 关键词判定：命中 hentai(198385) 时 r18_source == "keyword"，关键词接口不可用时回退 adult；
+5. 判定结果带缓存，重复渲染不重复查询；刷新接口清空缓存后可重新判定；
+6. 识别词：status 统计、apply 合并写入、重复 apply 幂等、保留用户已有规则、extra_identifiers 生效；
+7. 插件未启用时页面给出提示。
 
 运行：python tests/v3/r18marker/test_plugin.py
 """
@@ -21,7 +22,11 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[3]
 PLUGIN_FILE = REPO_ROOT / "plugins.v3" / "r18marker" / "__init__.py"
 
-TMDB_CALLS: list[str] = []
+TMDB_ADULT_CALLS: list[str] = []
+TMDB_KEYWORD_CALLS: list[str] = []
+
+# 宿主配置桩：模拟 SystemConfigKey.CustomIdentifiers 的读写
+FAKE_CONFIG_VALUES: dict[str, object] = {}
 
 
 class _Snapshot:
@@ -39,8 +44,19 @@ class _Page:
         self.total = len(items)
 
 
+class _FakeConfigService:
+    """模拟 app.application.configuration 的 SystemConfigService。"""
+
+    def get(self, key: object = None) -> object:
+        return FAKE_CONFIG_VALUES.get(str(key))
+
+    def set(self, key: object, value: object) -> bool:
+        FAKE_CONFIG_VALUES[str(key)] = value
+        return True
+
+
 def _install_stubs() -> None:
-    """构造最小宿主桩：插件基类、日志、只读查询 SDK。"""
+    """构造最小宿主桩：插件基类、日志、只读查询 SDK、系统配置。"""
 
     class _PluginBase:
         plugin_name = ""
@@ -67,10 +83,16 @@ def _install_stubs() -> None:
         def error(self, *args: object, **kwargs: object) -> None:
             pass
 
+        def debug(self, *args: object, **kwargs: object) -> None:
+            pass
+
     class QueryPageRequest:
         def __init__(self, page: int = 1, count: int = 50, **kwargs: object) -> None:
             self.page = page
             self.count = count
+
+    class SystemConfigKey:
+        CustomIdentifiers = "CustomIdentifiers"
 
     transfer = [
         _Snapshot(
@@ -112,7 +134,8 @@ def _install_stubs() -> None:
 
     app = _module("app")
     app.__path__ = []  # type: ignore[attr-defined]
-    _module("app.plugins", _PluginBase=_PluginBase).__path__ = []  # type: ignore[attr-defined]
+    plugins = _module("app.plugins", _PluginBase=_PluginBase)
+    plugins.__path__ = []  # type: ignore[attr-defined]
     sdk = _module("app.sdk")
     sdk.__path__ = []  # type: ignore[attr-defined]
     _module("app.sdk.logging", logger=_Logger())
@@ -123,6 +146,15 @@ def _install_stubs() -> None:
         list_transfer_history=lambda filters=None, page=None: _Page(list(transfer)),
         list_download_history=lambda filters=None, page=None: _Page(list(download)),
         list_subscriptions=lambda filters=None, page=None: _Page(list(subscriptions)),
+    )
+    schemas = _module("app.schemas")
+    schemas.__path__ = []  # type: ignore[attr-defined]
+    _module("app.schemas.types", SystemConfigKey=SystemConfigKey)
+    application = _module("app.application")
+    application.__path__ = []  # type: ignore[attr-defined]
+    _module(
+        "app.application.configuration",
+        get_configured_system_config=lambda: _FakeConfigService(),
     )
 
 
@@ -168,11 +200,12 @@ def main() -> None:
     _install_stubs()
     plugin_module = _load_plugin()
 
-    def fake_fetch(media_id: str):
-        TMDB_CALLS.append(media_id)
+    def fake_adult(media_id: str):
+        TMDB_ADULT_CALLS.append(media_id)
         return {"12345": True, "999": False}.get(media_id)
 
-    plugin_module._fetch_tmdb_adult = fake_fetch  # 隔离网络
+    plugin_module._fetch_tmdb_adult = fake_adult  # 隔离网络
+    plugin_module._fetch_tmdb_keywords = lambda media_id, mtype="": None  # 默认走 adult 回退
 
     plugin = plugin_module.R18Marker()
     plugin.init_plugin({"enabled": True, "source": "全部", "count": 10, "adult_text": "R18", "resolve_tmdb": True})
@@ -180,33 +213,90 @@ def main() -> None:
     # 1. 统计
     page = plugin.get_page()
     alerts = _alerts(page)
-    assert any("共 3 条" in text and "R18 1 条" in text and "未判定 1 条" in text for text in alerts), alerts
+    assert any("共 3 条" in t and "R18 1 条" in t and "未判定 1 条" in t for t in alerts), alerts
 
     # 2. 三种徽标
     chips = sorted(_chips(page))
     assert chips == sorted(["R18", "R18 未判定", "非 R18"]), chips
 
     # 3. 非 TMDB 来源未做判定
-    assert "67890" not in TMDB_CALLS, TMDB_CALLS
-    assert sorted(TMDB_CALLS) == ["12345", "999"], TMDB_CALLS
+    assert "67890" not in TMDB_ADULT_CALLS, TMDB_ADULT_CALLS
+    assert sorted(TMDB_ADULT_CALLS) == ["12345", "999"], TMDB_ADULT_CALLS
 
     # 4. 判定结果带缓存：再次渲染不重复查询
-    calls_before = len(TMDB_CALLS)
+    calls_before = len(TMDB_ADULT_CALLS)
     plugin.get_page()
-    assert len(TMDB_CALLS) == calls_before, f"缓存未生效：{TMDB_CALLS}"
+    assert len(TMDB_ADULT_CALLS) == calls_before, TMDB_ADULT_CALLS
 
     # 5. 刷新接口清空缓存后可重新判定
     assert plugin.api_refresh()["success"] is True
     plugin.get_page()
-    assert len(TMDB_CALLS) > calls_before, f"清空缓存后未重新判定：{TMDB_CALLS}"
+    assert len(TMDB_ADULT_CALLS) > calls_before, TMDB_ADULT_CALLS
 
-    # 6. 未启用时给出提示
+    # 6. 关键词判定优先，且标注来源
+    plugin_module._fetch_tmdb_keywords = lambda media_id, mtype="": [198385] if media_id == "12345" else []
+    plugin.api_refresh()
+
+    def fake_adult_should_not_be_used(media_id: str):
+        TMDB_ADULT_CALLS.append(media_id)
+        raise AssertionError("关键词可判定时不应回退 adult 字段")
+
+    plugin_module._fetch_tmdb_adult = fake_adult_should_not_be_used
+    result = plugin.api_results()
+    items = {item["media_id"]: item for item in result["items"]}
+    assert items["12345"]["adult"] is True and items["12345"]["r18_source"] == "keyword", items["12345"]
+    assert items["999"]["adult"] is False and items["999"]["r18_source"] == "keyword", items["999"]
+
+    # 关键词接口不可用时回退 adult
+    plugin_module._fetch_tmdb_keywords = lambda media_id, mtype="": None
+    plugin_module._fetch_tmdb_adult = fake_adult
+    plugin.api_refresh()
+    result = plugin.api_results()
+    items = {item["media_id"]: item for item in result["items"]}
+    assert items["12345"]["r18_source"] == "adult", items["12345"]
+
+    # 7. 识别词：status / preview / apply
+    status = plugin.api_identifiers_status()
+    assert status["available"] is True, status
+    assert status["builtin_count"] == 76 and status["host_count"] == 0, status
+    assert status["missing"] == 76 and status["present"] == 0, status
+
+    preview = plugin.api_identifiers_preview()
+    assert preview["success"] is True and preview["total"] == 76 and preview["added"] == 76, preview
+    # 预览不写入
+    assert "CustomIdentifiers" not in FAKE_CONFIG_VALUES, FAKE_CONFIG_VALUES
+
+    first = plugin.api_identifiers_apply()
+    assert first["success"] is True and first["added"] == 76 and first["total"] == 76, first
+    stored = FAKE_CONFIG_VALUES["CustomIdentifiers"]
+    assert isinstance(stored, list) and len(stored) == 76, stored
+
+    # 幂等：再写一次不再新增
+    second = plugin.api_identifiers_apply()
+    assert second["success"] is True and second["added"] == 0, second
+
+    # 保留用户已有规则，只追加缺失项
+    FAKE_CONFIG_VALUES["CustomIdentifiers"] = ["我的规则 => 替换", stored[0]]
+    third = plugin.api_identifiers_apply()
+    assert third["added"] == 75, third
+    merged = FAKE_CONFIG_VALUES["CustomIdentifiers"]
+    assert merged[0] == "我的规则 => 替换" and len(merged) == 77, merged[:3]
+
+    # extra_identifiers 追加在内置规则之后
+    plugin.init_plugin({"enabled": True, "extra_identifiers": "自定义追加规则 => 值"})
+    assert plugin.api_identifiers_status()["builtin_count"] == 77
+    FAKE_CONFIG_VALUES["CustomIdentifiers"] = []
+    applied = plugin.api_identifiers_apply()
+    assert applied["added"] == 77, applied
+    assert FAKE_CONFIG_VALUES["CustomIdentifiers"][-1] == "自定义追加规则 => 值"
+
+    # 8. 未启用时给出提示
     plugin.init_plugin({"enabled": False})
     page = plugin.get_page()
-    assert any("插件未启用" in text for text in _alerts(page)), _alerts(page)
+    assert any("插件未启用" in t for t in _alerts(page)), _alerts(page)
     assert plugin.get_state() is False
 
-    # 7. 结果接口
+    # 9. 结果接口
     plugin.init_plugin({"enabled": True, "source": "整理历史", "count": 10, "resolve_tmdb": False})
     result = plugin.api_results()
     assert result["total"] == 1 and result["unknown"] == 1, result

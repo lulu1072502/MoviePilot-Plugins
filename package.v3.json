@@ -15,16 +15,17 @@
   },
   "R18Marker": {
     "name": "R18标志",
-    "description": "把整理历史、下载历史、订阅里的识别结果集中到一个插件页面，为成人内容条目显示 R18 标志：媒体身份为 TMDB 时读取该 ID 的 adult 字段并带 TTL 缓存，其它来源显示「未判定」，不伪造标记；同时提供 /results 与 /refresh 插件接口。",
+    "description": "把整理历史、下载历史、订阅里的识别结果集中到一个插件页面并标记 R18：优先用 TMDB 关键词（默认 198385 hentai，可配置）判定，回退 adult 字段，带 TTL 缓存，其它来源显示「未判定」；内置 76 条经 TMDB 逐条核对的 TMDB 绑定/清理识别词，提供一键合并写入自定义识别词（/identifiers/status|preview|apply）。",
     "labels": "识别,元数据",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "icon": "Moviepilot_A.png",
     "author": "Ken",
     "level": 1,
     "release": true,
     "system_version": ">=3.0.0",
     "history": {
-      "v1.0.0": "首个版本：基于 app.sdk.queries 读取整理历史/下载历史/订阅的识别结果，按媒体身份解析成人标记（TMDB adult 字段，7 天 TTL 缓存），在插件页面用红/黄/绿徽标区分 R18、未判定与非 R18，并提供清空缓存重新判定的按钮与插件 API。"
+      "v1.0.0": "首个版本：基于 app.sdk.queries 读取整理历史/下载历史/订阅的识别结果，按媒体身份解析成人标记（TMDB adult 字段，7 天 TTL 缓存），在插件页面用红/黄/绿徽标区分 R18、未判定与非 R18，并提供清空缓存重新判定的按钮与插件 API。",
+      "v1.1.0": "R18 判定升级：优先读取 TMDB 关键词（默认 198385 hentai，可配置关键词 ID 并可关闭改用 adult 字段），走宿主 TMDB 客户端 /tv|movie/{id}/keywords 并带 HTTP 回退；新增内置 76 条经 TMDB 逐条核对的绑定/清理识别词（快照随插件版本发布），提供 /identifiers/status|preview|apply 三个接口与页面按钮，合并写入宿主 SystemConfigKey.CustomIdentifiers（不覆盖已有规则、重复执行不重复添加）；配置新增关键词开关、关键词 ID、额外识别词输入框。"
     }
   }
 }
